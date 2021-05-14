@@ -2,18 +2,16 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include<sys/types.h>
+#include <fcntl.h>  
+// Include user header file 
+#include "builtin_func.h"
 
 #define MAX_LENGTH 80
 #define MAX_ARGS 15
 const char delimiter[3] = " \n";
 const int num_builtins = 6;
-
-int cmd_pwd(char **args);
-int cmd_cd(char **args);
-int cmd_ls(char **args);
-int cmd_sort(char **args);
-int cmd_history(char **args);
-int cmd_exit(char **args);
+const mode_t mode_file = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
 
 char *builtin_command[] = {
     "pwd",
@@ -32,46 +30,6 @@ int (*builtin_func[]) (char **) = {
     &cmd_history,
     &cmd_exit
 };
-
-int cmd_pwd(char **args) {
-    char buffer[256];
-    if (getcwd(buffer, sizeof(buffer)) == NULL) {
-        perror("can't get current dir");
-        return 1;
-    }
-    printf("Current directory is: %s\n", buffer);
-    return 0;
-}
-
-int cmd_cd(char **args) {
-    if (args[1] == NULL) {
-        fprintf(stderr, "Expected argument(destination directory) for this argument\n");
-        return 1;
-    }
-    if (chdir(args[1]) != 0) {
-        fprintf(stderr, "No such file or directory %s\n", args[1]);
-        return 1;
-    } 
-    return 0;
-}
-
-int cmd_ls(char **args) {
-    return 0;
-}
-
-int cmd_sort(char **args) {
-    return 0;
-}
-
-int cmd_history(char **args) {
-    return 0;
-}
-
-int cmd_exit(char **args) {
-    return 0;
-}
-
-
 
 int execute_nonbuiltin_command(char **args) {
     int run_bg = 0;
@@ -103,6 +61,43 @@ int execute_nonbuiltin_command(char **args) {
 }   
 
 int execute_command(char **args) {
+    char * input_filename = NULL, * output_filename = NULL;
+    int i = 0;
+    // Check whether rediect in/out or not  
+    for (i = 0; args[i] != NULL ; ++i) {
+        if (strcmp(args[i], "<") == 0) {
+            input_filename = args[i + 1];
+            args[i] = NULL;
+            printf("Redirect input to %s\n", input_filename);
+        }
+        if (strcmp(args[i], ">") == 0) {
+            output_filename = args[i + 1];
+            args[i] = NULL;
+            printf("Redirect output to %s\n", output_filename);
+        }
+    }
+    if (i == 0) {
+        return 0;
+    }
+    // Redirect in/out
+    int fi, fo;
+    if (input_filename != NULL) {
+        fi = open(input_filename, O_RDONLY, mode_file);
+        if (fi == -1) {
+            fprintf(stderr, "Error when opening file to read\n");
+            return 1;
+        }
+        dup2(fi, STDIN_FILENO); 
+    } 
+    if (output_filename != NULL) {
+        fo = open(output_filename, O_WRONLY | O_CREAT, mode_file);
+        if (fo == -1) {
+            fprintf(stderr, "Error when opening file to write\n");
+            return 1;
+        }
+        dup2(fo, STDOUT_FILENO); 
+    }
+    // Check whether builtin function or not
     for (int i = 0; i < num_builtins; ++i) {
         if (strcmp(args[0], builtin_command[i]) == 0) {
             return (*builtin_func[i])(args);
@@ -122,11 +117,17 @@ char **get_params(char *command) {
         i += 1;
         token = strtok(NULL, delimiter);
     }
+    for (int j = 0; j < i; ++j) {
+        printf("Token %d: %s\n", j, args[j]);
+    }
     args[i] = NULL;
     return args;
 }
 
 int main() {
+
+    int saved_stdin = dup(STDIN_FILENO), saved_stdout = dup(STDOUT_FILENO);
+
     // // execvp(cmd, argv); //This will run "ls -la" as if it were a command
     char command[MAX_LENGTH];
     char **args;
@@ -135,6 +136,9 @@ int main() {
     int status = 0;
 
     while (is_running) {
+        // Restore standard std in/out
+        dup2(saved_stdin, STDIN_FILENO);
+        dup2(saved_stdout, STDOUT_FILENO);
         // Read command
         printf("osh>"); fflush(stdout);
         fgets(command, MAX_LENGTH, stdin);
