@@ -35,8 +35,9 @@ int cmd_sort(char **args) {
     return 0;
 }
 
-int cmd_history(char **args) {
-
+int cmd_history(char *command_history[], int max_history) {
+    for (int i = 0; i < max_history; ++i)
+        printf(command_history[i]);
     return 0;
 }
 

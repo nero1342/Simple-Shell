@@ -10,15 +10,17 @@
 #define MAX_LENGTH 80
 #define MAX_ARGS 15
 const char delimiter[3] = " \n";
-const int num_builtins = 6;
+const int num_builtins = 5;
 const mode_t mode_file = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+const int MAX_HISTORY = 10;
+int count = 0;
+char *command_history[MAX_HISTORY];
 
 char *builtin_command[] = {
-    "pwd",
-    "cd",
-    "lsa",
-    "sort",
-    "history",
+    "apwd",
+    "acd",
+    "alsa",
+    "asort",
     "exit"
 };
 
@@ -27,7 +29,6 @@ int (*builtin_func[]) (char **) = {
     &cmd_cd,
     &cmd_ls,
     &cmd_sort,
-    &cmd_history,
     &cmd_exit
 };
 
@@ -103,6 +104,9 @@ int execute_command(char **args) {
             return (*builtin_func[i])(args);
         }
     }
+    if (strcmp(args[0], "history") == 0) {
+        return cmd_history(command_history, MAX_HISTORY);
+    }
     return execute_nonbuiltin_command(args);
 }
 
@@ -124,17 +128,22 @@ char **get_params(char *command) {
     return args;
 }
 
+void init_history() {
+    for (int i = 0; i < MAX_HISTORY; ++i) 
+        command_history[i] = malloc(MAX_ARGS * sizeof(char));
+}
+
 int main() {
 
     int saved_stdin = dup(STDIN_FILENO), saved_stdout = dup(STDOUT_FILENO);
 
     // // execvp(cmd, argv); //This will run "ls -la" as if it were a command
-    char command[MAX_LENGTH];
+    char command[MAX_LENGTH], command_raw[MAX_LENGTH];
     char **args;
 
     int is_running = 1;
     int status = 0;
-
+    init_history();
     while (is_running) {
         // Restore standard std in/out
         dup2(saved_stdin, STDIN_FILENO);
@@ -142,9 +151,18 @@ int main() {
         // Read command
         printf("osh>"); fflush(stdout);
         fgets(command, MAX_LENGTH, stdin);
+        strcpy(command_raw, command);
         // Tokenize args 
         args = get_params(command);
         status = execute_command(args);
         printf("Status of this command is: %d\n", status);
+        // Store history of commands
+        if (count == MAX_HISTORY) {
+            --count;
+            for (int i = 0; i < count; ++i)
+                strcpy(command_history[i], command_history[i+1]);
+        }
+        strcpy(command_history[count], command_raw);
+        ++count;
     }
 }
