@@ -14,6 +14,7 @@ all: $(TARGET)
 	@echo  Simple compiler named myshell has been compiled
 
 $(TARGET): $(TARGET).c 
-	$(CC) $(CFLAGS) -o $(TARGET) $(TARGET).c builtin_func.c 
+	$(CC) $(CFLAGS) -o $(TARGET) builtin_func.c  $(TARGET).c 
 
-# run: $(TARGET)
+clean:
+	-rm $(TARGET)
