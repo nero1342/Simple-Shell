@@ -25,8 +25,18 @@ void handler_sigtstp(int sig) {
     fprintf(stderr, "\nCtrl-Z detected!!\n%s", shell_name);
     fflush(stdout);
 }
+
+int child_exit = 0;
+int run_in_bg = 0;
 void handler_sigchld(int sig) {
     // something here
+    pid_t pid = 0;
+    if (run_in_bg == 0) {
+        while ((pid = waitpid(-1, NULL, WNOHANG)) == 0);
+        printf("Process with pid %d finished.\n", pid);
+        child_exit = 1;
+    }
+
 }
 
 const char *builtin_command[] = {
@@ -52,6 +62,8 @@ int (*builtin_func[]) (char **) = {
 char **get_params(char *command);
 int execute_command(char **args);
 int execute_nonbuiltin_command(char **args);
+int execute_pipe(char **argv1, char **argv2);
+
 void init_history();
 void save_command(char * command);
 
@@ -106,32 +118,31 @@ int main() {
 }
 
 int execute_nonbuiltin_command(char **args) {
-    int run_bg = 0;
     int pid = 0;
-    int i = 0;
-    while (args[i] != NULL) ++i;
-    if (strcmp(args[i - 1], "&") == 0) {
-        run_bg = 1;
-        printf("Run in background\n");    
-        args[i - 1] = '\0';
-    }
     pid = fork();
     if (pid == 0) {
         if (execvp(args[0], args) == -1) {
             printf("Error when executing this command.\n");
+            exit(1);
         }
+        exit(0);
     } else {
-        if (run_bg == 0)
-            while(wait(NULL) > 0);
+        if (run_in_bg == 0) {
+            printf("Pid: %d\n", pid);
+            while(child_exit == 0) {
+                // printf("Waiting....\n");
+            }
+            child_exit = 0;
+        }
     }
 
     // Release the memory 
-    for (int j = 0; j < i; ++j) free(args[i]);
     free(args);
-    return 1;
+    return 0;
 }   
 
 int execute_command(char **args) {
+    run_in_bg = 0;
     char * input_filename = NULL, * output_filename = NULL;
     int i = 0;
     // Check whether rediect in/out or not  
@@ -140,14 +151,27 @@ int execute_command(char **args) {
             input_filename = args[i + 1];
             args[i] = NULL;
             printf("Redirect input to %s\n", input_filename);
+            continue;
         }
         if (strcmp(args[i], ">") == 0) {
             output_filename = args[i + 1];
             args[i] = NULL;
             printf("Redirect output to %s\n", output_filename);
+            continue;
+        }
+        if (strcmp(args[i], "|") == 0) {
+            char ** argv2 = &args[i + 1];
+            args[i] = NULL;
+            return execute_pipe(args, argv2);
         }
     }
     if (i == 0) return 0;
+    // Check background
+    if (strcmp(args[i - 1], "&") == 0) {
+        run_in_bg = 1;
+        printf("Run in background\n");    
+        args[i - 1] = '\0';
+    }
     // Redirect in/out
     int fi, fo;
     if (input_filename != NULL) {
@@ -194,4 +218,50 @@ char **get_params(char *command) {
     }
     args[i] = NULL;
     return args;
+}
+
+int execute_pipe(char **argv1, char **argv2) {
+    printf("Pipe detected!!\n");
+    for(int j = 0; argv1[j] != NULL; ++j) {
+        printf("1_%d: %s\n", j, argv1[j]);
+    } 
+    for(int j = 0; argv2[j] != NULL; ++j) {
+        printf("2_%d: %s\n", j, argv2[j]);
+    } 
+    int fds[2];
+    pipe(fds);
+    int i = 0;
+    
+    while (i < 2) {
+        pid_t pid = fork();
+        if (pid == -1) {
+            fprintf(stderr, "Error when fork!!\n");
+            return 1;
+        }
+        if (pid == 0) {
+        // child process
+            if (i == 0) {
+                close(fds[0]);
+                dup2(fds[1], 1);
+                if (execvp(argv1[0], argv1) == 1) {
+                    fprintf(stderr, "Error when using execvp!!\n");
+                    exit(1);
+                } 
+                exit(0);
+            } else if (i == 1) {
+                close(fds[1]);
+                dup2(fds[0], 0);
+                if (execvp(argv2[0], argv2) == -1) {
+                    fprintf(stderr, "Error when using execvp!!\n");
+                    exit(1);
+                }
+                exit(0);
+            }
+        } else {
+            ++i;
+        }
+    } 
+    free(argv1);
+    free(argv2);
+    return 0;
 }
