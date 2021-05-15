@@ -128,7 +128,7 @@ int execute_nonbuiltin_command(char **args) {
     // Release the memory 
     for (int j = 0; j < i; ++j) free(args[i]);
     free(args);
-    return 1;
+    return 0;
 }   
 
 int execute_command(char **args) {
@@ -139,9 +139,9 @@ int execute_command(char **args) {
         if (strcmp(args[i], "<") == 0) {
             input_filename = args[i + 1];
             args[i] = NULL;
-            printf("Redirect input to %s\n", input_filename);
-        }
-        if (strcmp(args[i], ">") == 0) {
+            if (strcmp(args[0], "sort") != 0)
+                printf("Redirect input to %s\n", input_filename);
+        } else if (strcmp(args[i], ">") == 0) {
             output_filename = args[i + 1];
             args[i] = NULL;
             printf("Redirect output to %s\n", output_filename);

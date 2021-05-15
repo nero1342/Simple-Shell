@@ -4,11 +4,17 @@
 #include <dirent.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <fcntl.h>  
 
 #include "builtin_func.h"
 
+const int MAX_BUFFER = 256;
+
+void mergeSort(char **lines, int low, int high);
+void merge(char **line, int low, int mid, int high);
+
 int cmd_pwd(char **args) {
-    char buffer[256];
+    char buffer[MAX_BUFFER];
     if (getcwd(buffer, sizeof(buffer)) == NULL) {
         perror("can't get current dir");
         return 1;
@@ -75,13 +81,90 @@ int cmd_ls(char **args) {
     return 0;
 }
 
+void mergeSort(char **lines, int low, int high) {
+    for (int i = low; i <= high; ++i) {
+        printf("%s\n", lines[i]);
+    }
+    if (low < high) {
+        int mid = (low + high) / 2;
+        mergeSort(lines, low, mid);
+        mergeSort(lines, mid+1, high);
+        merge(lines, low, mid, high);
+    }
+}
+
+void merge(char **lines, int low, int mid, int high) {
+    for (int i = low; i <= high; ++i) {
+        printf("%s\n", lines[i]);
+    }
+    printf("merge %d %d %d\n", low, mid, high);
+    int i = low, j = mid+1 , k = low;
+    char tmp[MAX_BUFFER][MAX_BUFFER];
+
+    while(i <= mid && j <= high) {
+        if(strcmp(lines[i], lines[j]) == -1){
+            strcpy(tmp[k], lines[i]);
+            ++i;
+        } else {
+            strcpy(tmp[k], lines[j]);
+            ++j;
+        }
+        ++k;
+    }
+
+    if(i > mid) {
+        for(int h = j; h <= high; ++h) {
+            strcpy(tmp[k], lines[h]);
+            ++k;
+        }
+    } else {
+        for(int h = i; h <= mid; ++h) {
+            strcpy(tmp[k], lines[h]);
+            ++k;
+        }
+    }
+
+    // Reassign to lines
+    for(int i = low; i <= high; ++i)
+        strcpy(lines[i], tmp[i]);
+}
+
 int cmd_sort(char **args) {
+    int i = 1, count_line = 0;
+    char lines[MAX_BUFFER][MAX_BUFFER];
+    char command[MAX_BUFFER];
+
+    if (args[1] == NULL) {
+        while (fgets(command, MAX_BUFFER, stdin) != NULL && count_line < MAX_BUFFER) {
+            strcpy(lines[count_line], command);
+            ++count_line;
+        }
+    } else {
+        while (args[i] != NULL && count_line < MAX_BUFFER) {
+            FILE *fi = fopen(args[i], "r");
+            while (fgets(command, MAX_BUFFER, (FILE*) fi) != NULL && count_line < MAX_BUFFER) {
+                if (command[strlen(command)-1] == '\n') 
+                    command[strlen(command)-1] = '\0';
+                strcpy(lines[count_line], command);
+                ++count_line;
+            }
+            fclose(fi);
+            ++i;
+        }
+    }
+
+    mergeSort(lines, 0, count_line-1);
+
+    for (int _count = 0 ; _count < count_line; ++_count) {
+        printf("%s\n", lines[_count]);
+    }
+    
     return 0;
 }
 
 int cmd_history(char *command_history[], int num_commands) {
     for (int i = 0; i < num_commands; ++i)
-        printf("%d: %s", i + 1, command_history[i]);
+        printf("%d\t%s", i + 1, command_history[i]);
     return 0;
 }
 
