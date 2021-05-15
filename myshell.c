@@ -44,7 +44,8 @@ const char *builtin_command[] = {
     "cd",
     "ls",
     "sort",
-    "exit"
+    "exit",
+    "!!"
 };
 
 int count = 0;
@@ -68,6 +69,7 @@ void init_history();
 void save_command(char * command);
 
 void init_history() {
+    count = 0;
     for (int i = 0; i < MAX_HISTORY; ++i) 
         command_history[i] = malloc(MAX_ARGS * sizeof(char));
 }
@@ -82,11 +84,18 @@ void save_command(char * command) {
     ++count;
 }
 
+int get_last_command(char * command) {
+    if (count == 0) {
+        return -1;
+    }
+    strcpy(command, command_history[count - 1]);
+    return 0;
+}
 
 int main() {
-    // signal(SIGINT, handler_sigint);
-    // signal(SIGTSTP, handler_sigtstp);
-    // signal(SIGCHLD, handler_sigchld);
+    signal(SIGINT, handler_sigint);
+    signal(SIGTSTP, handler_sigtstp);
+    signal(SIGCHLD, handler_sigchld);
 
     // Save stdin/out and restore after each command 
     int saved_stdin = dup(STDIN_FILENO), saved_stdout = dup(STDOUT_FILENO);
@@ -106,6 +115,15 @@ int main() {
 
         // Tokenize args and execute the command
         args = get_params(command);
+        if (strcmp(args[0], "!!") == 0) {
+            if (get_last_command(command) != 0) {
+                fprintf(stderr, "No commands in history.\n");
+                continue;
+            }
+            printf("Last command: %s", command);
+            strcpy(command_raw, command);
+            args = get_params(command);
+        }
         status = execute_command(args);
 
         // Restore standard std in/out
@@ -133,7 +151,7 @@ int execute_nonbuiltin_command(char **args) {
         exit(0);
     } else {
         if (run_in_bg == 0) {
-            printf("Pid: %d\n", pid);
+            // printf("Pid: %d\n", pid);
             while(child_exit == 0) {
                 // printf("Waiting....\n");
             }
@@ -155,8 +173,8 @@ int execute_command(char **args) {
         if (strcmp(args[i], "<") == 0) {
             input_filename = args[i + 1];
             args[i] = NULL;
-            // if (strcmp(args[0], "sort") != 0)
-            printf("Redirect input to %s\n", input_filename);
+            if (strcmp(args[0], "sort") != 0)
+                printf("Redirect input to %s\n", input_filename);
 
         } else if (strcmp(args[i], ">") == 0) {
             output_filename = args[i + 1];
@@ -217,21 +235,21 @@ char **get_params(char *command) {
         i += 1;
         token = strtok(NULL, delimiter);
     }
-    for (int j = 0; j < i; ++j) {
-        printf("Token %d: %s\n", j, args[j]);
-    }
+    // for (int j = 0; j < i; ++j) {
+    //     printf("Token %d: %s\n", j, args[j]);
+    // }
     args[i] = NULL;
     return args;
 }
 
 int execute_pipe(char **argv1, char **argv2) {
     printf("Pipe detected!!\n");
-    for(int j = 0; argv1[j] != NULL; ++j) {
-        printf("1_%d: %s\n", j, argv1[j]);
-    } 
-    for(int j = 0; argv2[j] != NULL; ++j) {
-        printf("2_%d: %s\n", j, argv2[j]);
-    } 
+    // for(int j = 0; argv1[j] != NULL; ++j) {
+    //     printf("1_%d: %s\n", j, argv1[j]);
+    // } 
+    // for(int j = 0; argv2[j] != NULL; ++j) {
+    //     printf("2_%d: %s\n", j, argv2[j]);
+    // } 
     int fds[2];
     pipe(fds);
     int i = 0;

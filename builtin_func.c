@@ -54,7 +54,7 @@ int cmd_ls(char **args) {
     if (dir == NULL) {
         dir = "./";
     }
-    printf("Dir %s, %d %d\n", dir, op_a, op_l);
+    // printf("Dir %s, %d %d\n", dir, op_a, op_l);
     struct dirent *d;
     struct stat this_stat;
     DIR * mydir = opendir(dir);
@@ -70,7 +70,7 @@ int cmd_ls(char **args) {
             sprintf(buf, "%s/%s", dir, d->d_name);
             stat(buf, &this_stat);
             // Stat here
-            printf("%10d", this_stat.st_size);
+            printf("%6d", this_stat.st_size);
 
             printf(" %s\n", d->d_name);
         } else {
