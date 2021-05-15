@@ -82,9 +82,9 @@ int cmd_ls(char **args) {
 }
 
 void mergeSort(char **lines, int low, int high) {
-    for (int i = low; i <= high; ++i) {
-        printf("%s\n", lines[i]);
-    }
+    // for (int i = low; i <= high; ++i) {
+    //     printf("%s\n", lines[i]);
+    // }
     if (low < high) {
         int mid = (low + high) / 2;
         mergeSort(lines, low, mid);
@@ -94,10 +94,6 @@ void mergeSort(char **lines, int low, int high) {
 }
 
 void merge(char **lines, int low, int mid, int high) {
-    for (int i = low; i <= high; ++i) {
-        printf("%s\n", lines[i]);
-    }
-    printf("merge %d %d %d\n", low, mid, high);
     int i = low, j = mid+1 , k = low;
     char tmp[MAX_BUFFER][MAX_BUFFER];
 
@@ -131,13 +127,16 @@ void merge(char **lines, int low, int mid, int high) {
 
 int cmd_sort(char **args) {
     int i = 1, count_line = 0;
-    char lines[MAX_BUFFER][MAX_BUFFER];
+    char **lines = malloc(MAX_BUFFER * sizeof(char*));
     char command[MAX_BUFFER];
 
     if (args[1] == NULL) {
+        printf("Used stdin\n");
         while (fgets(command, MAX_BUFFER, stdin) != NULL && count_line < MAX_BUFFER) {
+            lines[count_line] = malloc(MAX_BUFFER * sizeof(char));
             strcpy(lines[count_line], command);
             ++count_line;
+            fflush(stdin);
         }
     } else {
         while (args[i] != NULL && count_line < MAX_BUFFER) {
@@ -145,6 +144,7 @@ int cmd_sort(char **args) {
             while (fgets(command, MAX_BUFFER, (FILE*) fi) != NULL && count_line < MAX_BUFFER) {
                 if (command[strlen(command)-1] == '\n') 
                     command[strlen(command)-1] = '\0';
+                lines[count_line] = malloc(MAX_BUFFER * sizeof(char));
                 strcpy(lines[count_line], command);
                 ++count_line;
             }

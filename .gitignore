@@ -1,6 +1,6 @@
 *.dSYM 
-.vscode 
-makefile 
+.vscode  
+myshell 
 # Prerequisites
 *.d
 

@@ -84,9 +84,9 @@ void save_command(char * command) {
 
 
 int main() {
-    signal(SIGINT, handler_sigint);
-    signal(SIGTSTP, handler_sigtstp);
-    signal(SIGCHLD, handler_sigchld);
+    // signal(SIGINT, handler_sigint);
+    // signal(SIGTSTP, handler_sigtstp);
+    // signal(SIGCHLD, handler_sigchld);
 
     // Save stdin/out and restore after each command 
     int saved_stdin = dup(STDIN_FILENO), saved_stdout = dup(STDOUT_FILENO);
@@ -100,8 +100,9 @@ int main() {
     while (is_running) {
         // Read command
         printf("osh>"); fflush(stdout);
-        fgets(command, MAX_LENGTH, stdin);
+        fgets(command, MAX_LENGTH, stdin); 
         strcpy(command_raw, command);
+        printf("Command: %s\n", command);
 
         // Tokenize args and execute the command
         args = get_params(command);
@@ -109,7 +110,11 @@ int main() {
 
         // Restore standard std in/out
         dup2(saved_stdin, STDIN_FILENO);
+        fflush(stdin);
+        // close(saved_stdin);
         dup2(saved_stdout, STDOUT_FILENO);
+        fflush(stdout);
+        // close(saved_stdout);
         printf("Status of this command is: %d\n", status);
 
         // Store history of commands
@@ -150,15 +155,15 @@ int execute_command(char **args) {
         if (strcmp(args[i], "<") == 0) {
             input_filename = args[i + 1];
             args[i] = NULL;
-            if (strcmp(args[0], "sort") != 0)
-                printf("Redirect input to %s\n", input_filename);
+            // if (strcmp(args[0], "sort") != 0)
+            printf("Redirect input to %s\n", input_filename);
+
         } else if (strcmp(args[i], ">") == 0) {
             output_filename = args[i + 1];
             args[i] = NULL;
             printf("Redirect output to %s\n", output_filename);
             continue;
-        }
-        if (strcmp(args[i], "|") == 0) {
+        } else if (strcmp(args[i], "|") == 0) {
             char ** argv2 = &args[i + 1];
             args[i] = NULL;
             return execute_pipe(args, argv2);
