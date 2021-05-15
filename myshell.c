@@ -31,9 +31,10 @@ int run_in_bg = 0;
 void handler_sigchld(int sig) {
     // something here
     pid_t pid = 0;
+    fprintf(stderr, "SIGCHLD detected!!\n");
     if (run_in_bg == 0) {
         while ((pid = waitpid(-1, NULL, WNOHANG)) == 0);
-        printf("Process with pid %d finished.\n", pid);
+        fprintf(stderr, "Process with pid %d finished.\n", pid);
         child_exit = 1;
     }
 
@@ -115,7 +116,7 @@ int main() {
 
         // Tokenize args and execute the command
         args = get_params(command);
-        if (strcmp(args[0], "!!") == 0) {
+        if (args[0] != NULL && strcmp(args[0], "!!") == 0) {
             if (get_last_command(command) != 0) {
                 fprintf(stderr, "No commands in history.\n");
                 continue;
@@ -284,6 +285,5 @@ int execute_pipe(char **argv1, char **argv2) {
         }
     } 
     free(argv1);
-    free(argv2);
     return 0;
 }
