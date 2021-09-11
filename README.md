@@ -1,5 +1,5 @@
 # Simple-Shell
-Final project in Operating System course (CS333). 
+- Final project in Operating System course (CS333). 
 
 Members:
 - Nguyen E Ro - 18125046
